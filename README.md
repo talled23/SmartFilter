@@ -12,3 +12,5 @@ Back End:
   - GoDaddy, the site used for all Web Hosting, also hosts the database online
   - phpMyAdmin, a MySQL database
   - SQL query language, used to read and write in the database
+
+ Connection between front end and back end is done through wp-config.php
