@@ -73,7 +73,9 @@ class TOPAdm_List_Table extends WP_List_Table
                 'ID'          => __('ID', 'topadm-cookie-consent'),
                 'display_name'          => __('DisplayName', 'topadm-cookie-consent'),
                 'user_email'         => __('Email', 'topadm-cookie-consent'),
-                'user_registered'   => __('UserRegistered', 'topadm-cookie-consent')
+                'user_registered'   => __('UserRegistered', 'topadm-cookie-consent'),
+                'payment'   => __('Payment', 'topadm-cookie-consent'),
+                'courses'   => __('Courses', 'topadm-cookie-consent')
         );
         return $columns;
     }
@@ -122,6 +124,8 @@ class TOPAdm_List_Table extends WP_List_Table
                 case 'display_name':
                 case 'user_email':
                 case 'user_registered':
+                case 'payment':
+                case 'courses':
                 default:
                     return $item[$column_name];
           }
