@@ -1,3 +1,14 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD" crossorigin="anonymous">
+  </head>
+  <body>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js" integrity="sha384-w76AqPfDkMBDXo30jS1Sgez6pr3x5MlQ1ZAGC+nuZB+EYdgRZgiwxhTBTkF7CXvN" crossorigin="anonymous"></script>
+
+
 <?php
 
 /*
@@ -160,10 +171,91 @@ function topadm_list_init()
       $table = new TOPAdm_List_Table();
 
       echo '<div class="wrap"><h2>TOPAdm List Table</h2>';
+        echo '
+            <form class="row g-2" role="search" onsubmit="return false">
+                <div class="col-auto">
+                    <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search">
+                </div>
+                <div class="col-auto">
+                    <button class="btn btn-outline-success" type="submit">Search</button>
+                </div>
+            </form>
+        ';
+        echo '
+            <h2>Filter:</h2>
+            <form class="row g-3" onsubmit="return false">
+                <div class="col form-check">
+                    <input class="form-check-input" type="checkbox" value="" id="not">
+                    <label class="form-check-label" for="not">
+                        Not
+                    </label>
+                </div>
+                <div class="col form-check">
+                    <input class="form-check-input" type="checkbox" value="" id="sub">
+                    <label class="form-check-label" for="sub">
+                        Subscriber
+                    </label>
+                </div>
+                <div class="col">
+                    <div class="dropdown btn-group">
+                        <button class="btn btn-secondary dropdown-toggle money" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Payment Type
+                            <span class="caret"></span>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item payment" href="#">Payment Type</a></li>
+                            <li><a class="dropdown-item payment" href="#">Paid Full</a></li>
+                            <li><a class="dropdown-item payment" href="#">Paid Coupon</a></li>
+                            <li><a class="dropdown-item payment" href="#">Not Paid</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="dropdown btn-group">
+                        <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            In Course
+                            <span class="caret"></span>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#">In Course</a></li>
+                            <li><a class="dropdown-item" href="#">Test Course 1</a></li>
+                            <li><a class="dropdown-item" href="#">Test Course 2</a></li>
+                            <li><a class="dropdown-item" href="#">Test Course 3</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col">
+                    <button class="btn btn-outline-success" type="submit">Filter</button>
+                </div>
+            </form>
+        ';
+        
       // Prepare table
       $table->prepare_items();
       // Display table
       $table->display();
       echo '</div>';
-}
+      echo '<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>';
+      echo '<script>
+        $(".dropdown-menu li a").click(function(){
+            var selText = $(this).text();
+            $(this).parents(".btn-group").find(".dropdown-toggle").html(selText);
+        });
+      </script>';
+    // echo '<script>
+
+    //     var links = document.getElementsByClassName("payment");
+    //     for(var i = 0; i < links.length; i++){
+    //         links[i].addEventListener("click",
+    //         function(){
+    //             console.log(links[i].text);
+    //         })
+    //     }
+
+    // </script>';
+      
+}   
 ?>
+    
+</body>
+</html>
