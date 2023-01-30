@@ -102,6 +102,29 @@ class TOPAdm_List_Table extends WP_List_Table
         );
     }
 
+    protected function get_sortable_columns(){
+        $sortable_columns = array(
+            'display_name'  => array('display_name', false),
+            'user_registered'  => array('user_registered', false)
+        );
+        return $sortable_columns;
+    }
+
+    // Sorting function
+    function usort_reorder($a, $b){
+        // If no sort, default to user_login
+        $orderby = (!empty($_GET['orderby'])) ? $_GET['orderby'] : 'user_registered';
+
+        // If no order, default to asc
+        $order = (!empty($_GET['order'])) ? $_GET['order'] : 'asc';
+
+        // Determine sort order
+        $result = strcmp($a[$orderby], $b[$orderby]);
+
+        // Send final sort direction to usort
+        return ($order === 'asc') ? $result : -$result;
+    }
+
     // Bind table with columns, data and all
     function prepare_items()
     {
@@ -110,9 +133,24 @@ class TOPAdm_List_Table extends WP_List_Table
 
         $columns = $this->get_columns();
         $hidden = array();
-        $sortable = array();
+        $sortable = $this->get_sortable_columns();
         $primary  = 'display_name';
         $this->_column_headers = array($columns, $hidden, $sortable, $primary);
+
+        usort($this->table_data, array(&$this, 'usort_reorder'));
+
+        /* pagination */
+        $per_page = 5;
+        $current_page = $this->get_pagenum();
+        $total_items = count($this->table_data);
+
+        $this->table_data = array_slice($this->table_data, (($current_page - 1) * $per_page), $per_page);
+
+        $this->set_pagination_args(array(
+                'total_items' => $total_items, // total number of items
+                'per_page'    => $per_page, // items to show on a page
+                'total_pages' => ceil( $total_items / $per_page ) // use ceil to round up
+        ));
         
         $this->items = $this->table_data;
     }
@@ -237,9 +275,11 @@ function topadm_list_init()
         ';
         
     // Prepare table
+    echo '<form method="post">';
     $table->prepare_items();
     // Display table
     $table->display();
+    echo '</form>';
     echo '</div>';
 
     echo '<h2>Group Actions:</h2>';
