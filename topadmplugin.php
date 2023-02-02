@@ -75,7 +75,8 @@ class TOPAdm_List_Table extends WP_List_Table
                 'user_email'         => __('Email', 'topadm-cookie-consent'),
                 'user_registered'   => __('User Registered', 'topadm-cookie-consent'),
                 'pastcourses'   => __('Past Courses', 'topadm-cookie-consent'),
-                'curcourses'   => __('Current Courses', 'topadm-cookie-consent')
+                'curcourses'   => __('Current Courses', 'topadm-cookie-consent'),
+                'meta_value'   => __('Capabilities', 'topadm-cookie-consent')
         );
         return $columns;
     }
@@ -89,17 +90,45 @@ class TOPAdm_List_Table extends WP_List_Table
         
         return sprintf('%1$s %2$s', $item['display_name'], $this->row_actions($actions));
     }
-
-    // Get table data
-    private function get_table_data() {
+    private function get_table_data( $search = '' ) {
         global $wpdb;
 
         $table = $wpdb->prefix . 'users';
+        $table2 = $wpdb->prefix . 'usermeta';
+        $not = "";
+        if(isset($_POST['not'])){
+            $not = "NOT";
+        }
 
-        return $wpdb->get_results(
-            "SELECT * from {$table}",
-            ARRAY_A
-        );
+        if(isset($_POST['sub']) && isset($_POST['s'])){
+            return $wpdb->get_results(
+                "SELECT * FROM {$table} JOIN {$table2} ON ID=user_id 
+                 WHERE meta_key='wp_capabilities' 
+                 AND $not meta_value LIKE '%subscriber%'
+                 AND display_name LIKE '%{$search}%'",
+                ARRAY_A
+            );
+        }
+        if(isset($_POST['sub'])){
+            return $wpdb->get_results(
+                "SELECT * FROM {$table} JOIN {$table2} ON ID=user_id 
+                 WHERE meta_key='wp_capabilities' 
+                 AND $not meta_value LIKE '%subscriber%'",
+                ARRAY_A
+            );
+        }
+        if (isset($_POST['s'])) {
+            return $wpdb->get_results(
+                "SELECT * FROM {$table} JOIN {$table2} ON ID=user_id 
+                 WHERE meta_key='wp_capabilities' AND display_name LIKE '%{$search}%'",
+                ARRAY_A
+            );
+        } else {
+            return $wpdb->get_results(
+                "SELECT * FROM {$table} JOIN {$table2} ON ID=user_id WHERE meta_key='wp_capabilities'",
+                ARRAY_A
+            );
+        }
     }
 
     protected function get_sortable_columns(){
@@ -128,8 +157,15 @@ class TOPAdm_List_Table extends WP_List_Table
     // Bind table with columns, data and all
     function prepare_items()
     {
-        //data
-        $this->table_data = $this->get_table_data();
+        if ( isset($_POST['s']) ) {
+            $this->table_data = $this->get_table_data($_POST['s']);
+        }
+        else if(isset($_POST['sub'])){
+            $this->table_data = $this->get_table_data($_POST['sub']);
+        } 
+        else {
+            $this->table_data = $this->get_table_data();
+        }
 
         $columns = $this->get_columns();
         $hidden = array();
@@ -164,6 +200,7 @@ class TOPAdm_List_Table extends WP_List_Table
                 case 'user_registered':
                 case 'pastcourses':
                 case 'curcourses':
+                case 'meta_value':
                 default:
                     return $item[$column_name];
           }
@@ -215,27 +252,28 @@ function topadm_list_init()
         
 
         echo '<div class="wrap"><h1>T.O.P. Smart Nutrition Administration Page</h2>';
+        echo '<form method="POST">';
         echo '
-            <form class="row g-2" role="search" onsubmit="return false">
+            <div class="row g-2" role="search">
                 <div class="col-auto">
-                    <input class="form-control me-2" type="search" placeholder="Search by Name" aria-label="Search">
+                    <input class="form-control me-2" id="search_id-search-input" type="search" placeholder="Search by Name" aria-label="Search" name="s">
                 </div>
                 <div class="col-auto">
-                    <button class="btn btn-outline-success" type="submit">Search</button>
+                    <button class="btn btn-outline-success" id="search-submit" value="search" type="submit">Search</button>
                 </div>
-            </form>
+            </div>
         ';
         echo '
             <h2 class="mb-0">Filter:</h2>
-            <form class="row g-3 align-items-center" onsubmit="return false">
+            <div class="row g-3 align-items-center">
                 <div class="col-auto mx-1">
-                    <input type="checkbox" value="" id="not">
+                    <input type="checkbox" value="" id="not" name="not">
                     <label for="not">
                         Not
                     </label>
                 </div>
                 <div class="col-auto mx-1">
-                    <input type="checkbox" value="" id="sub">
+                    <input type="checkbox" value="" id="sub" name="sub">
                     <label for="sub">
                         Subscriber
                     </label>
@@ -271,8 +309,9 @@ function topadm_list_init()
                 <div class="col-auto mx-1">
                     <button class="btn btn-outline-success" type="submit">Filter</button>
                 </div>
-            </form>
+            </div>
         ';
+        echo '</form>';
         
     // Prepare table
     echo '<form method="post">';
