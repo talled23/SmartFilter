@@ -148,7 +148,7 @@ class TOPAdm_List_Table extends WP_List_Table
         $order = (!empty($_GET['order'])) ? $_GET['order'] : 'asc';
 
         // Determine sort order
-        $result = strcmp($a[$orderby], $b[$orderby]);
+        $result = strcmp(strtoupper($a[$orderby]), strtoupper($b[$orderby]));
 
         // Send final sort direction to usort
         return ($order === 'asc') ? $result : -$result;
@@ -249,6 +249,8 @@ function topadm_list_init()
         // Creating an instance
         $table = new TOPAdm_List_Table();
 
+        $selectedStudents=array("Tal", "Test 2");
+
         
 
         echo '<div class="wrap"><h1>T.O.P. Smart Nutrition Administration Page</h2>';
@@ -330,7 +332,9 @@ function topadm_list_init()
             <div class="modal-dialog">
                 <div class="modal-content">
                 <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="emailModalLabel">New email to: Tal, Test McTest, Tal Test2</h1>
+                    <h1 class="modal-title fs-5" id="emailModalLabel">New email to: '; 
+                        echo implode(", ", $selectedStudents);
+                    echo '</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -362,7 +366,9 @@ function topadm_list_init()
             <div class="modal-dialog">
                 <div class="modal-content">
                 <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="discountModalLabel">New Discount For: Tal</h1>
+                    <h1 class="modal-title fs-5" id="discountModalLabel">New Discount For: '; 
+                    echo implode(", ", $selectedStudents);
+                echo '</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -391,7 +397,9 @@ function topadm_list_init()
             <div class="modal-dialog">
                 <div class="modal-content">
                 <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="addclassModalLabel">Enrolling: Test McTest</h1>
+                    <h1 class="modal-title fs-5" id="addclassModalLabel">Enrolling: '; 
+                    echo implode(", ", $selectedStudents);
+                echo '</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -430,7 +438,9 @@ function topadm_list_init()
             <div class="modal-dialog">
                 <div class="modal-content">
                 <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="removeclassModalLabel">Removing: Test McTest</h1>
+                    <h1 class="modal-title fs-5" id="removeclassModalLabel">Removing: '; 
+                    echo implode(", ", $selectedStudents);
+                echo '</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
