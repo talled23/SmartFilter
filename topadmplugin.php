@@ -33,11 +33,9 @@ if(isset($_GET['action']) && isset($_GET['element'])){
 }
 
 
-
 // Extending class
 class TOPAdm_List_Table extends WP_List_Table
 {
-
 
     // static function edit_displayname()
     // {
@@ -63,7 +61,9 @@ class TOPAdm_List_Table extends WP_List_Table
     // }
 
     // define $table_data property
-    private $table_data;
+    public $table_data;
+
+    private $filters = array();
 
     // Define table columns
     function get_columns()
@@ -160,9 +160,6 @@ class TOPAdm_List_Table extends WP_List_Table
         if ( isset($_POST['s']) ) {
             $this->table_data = $this->get_table_data($_POST['s']);
         }
-        else if(isset($_POST['sub'])){
-            $this->table_data = $this->get_table_data($_POST['sub']);
-        } 
         else {
             $this->table_data = $this->get_table_data();
         }
@@ -175,12 +172,13 @@ class TOPAdm_List_Table extends WP_List_Table
 
         usort($this->table_data, array(&$this, 'usort_reorder'));
 
+        //array_push($this->names, $item['display_name']);
         /* pagination */
         $per_page = 5;
         $current_page = $this->get_pagenum();
         $total_items = count($this->table_data);
 
-        $this->table_data = array_slice($this->table_data, (($current_page - 1) * $per_page), $per_page);
+        //$this->table_data = array_slice($this->table_data, (($current_page - 1) * $per_page), $per_page);
 
         $this->set_pagination_args(array(
                 'total_items' => $total_items, // total number of items
@@ -188,7 +186,7 @@ class TOPAdm_List_Table extends WP_List_Table
                 'total_pages' => ceil( $total_items / $per_page ) // use ceil to round up
         ));
         
-        $this->items = $this->table_data;
+        $this->items = array_slice($this->table_data, (($current_page - 1) * $per_page), $per_page);
     }
 
     function column_default($item, $column_name)
@@ -209,12 +207,11 @@ class TOPAdm_List_Table extends WP_List_Table
     function column_cb($item)
     {
         return sprintf(
-                '<input type="checkbox" name="element[]" value="%s" />',
+                '<input type="checkbox" name="element[]" value="%s"/>',
                 $item['ID']
         );
     }
 
-    
 }
 
 function doChanges($action, $element){
@@ -249,9 +246,7 @@ function topadm_list_init()
         // Creating an instance
         $table = new TOPAdm_List_Table();
 
-        $selectedStudents=array("Tal", "Test 2");
-
-        
+        echo '<iframe name="votar" style="display:none;"></iframe>';
 
         echo '<div class="wrap"><h1>T.O.P. Smart Nutrition Administration Page</h2>';
         echo '<form method="POST">';
@@ -316,12 +311,14 @@ function topadm_list_init()
         echo '</form>';
         
     // Prepare table
-    echo '<form method="post">';
+    echo '<form method="POST">';
     $table->prepare_items();
     // Display table
     $table->display();
-    echo '</form>';
+
     echo '</div>';
+
+    echo '<button type="submit" id="selectStudents" class="btn btn-secondary">Select Students</button>';
 
     echo '<h2>Group Actions:</h2>';
 
@@ -332,8 +329,35 @@ function topadm_list_init()
             <div class="modal-dialog">
                 <div class="modal-content">
                 <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="emailModalLabel">New email to: '; 
-                        echo implode(", ", $selectedStudents);
+                    <h1 class="modal-title fs-5" id="emailModalLabel">New email to '; 
+                        //echo implode(", ", $selectedStudents);
+                        if(isset($_POST['element'])){
+                            $elementss = $_POST['element'];
+                            //echo var_dump($elementss);
+                            $N = count($elementss);
+
+                            echo("$N student(s): ");
+                            for($i=0; $i < $N-1; $i++)
+                            {
+                            /*
+                            echo '1:     ';
+                            echo $elementss[$i];
+                            echo '2:    ';
+                            echo $elementss[$i]-1;
+
+                            echo var_dump($table->table_data);
+                            echo var_dump($table->table_data[$elementss[$i]-1]);
+                            echo var_dump($table->table_data[$elementss[$i]-1]['display_name']);
+                            
+                            */
+                            
+                            echo($table->table_data[$elementss[$i]-1]['display_name']  . ", ");
+                            }
+                            echo($table->table_data[$elementss[$N - 1]-1]['display_name']);
+                        }
+                        else{
+                            echo("nobody. You didn't select any students.");
+                        }
                     echo '</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -348,6 +372,19 @@ function topadm_list_init()
                         <textarea class="form-control" id="body"></textarea>
                     </div>
                     </form>
+                    <p>List of emails: ';
+                        if(isset($_POST['element'])){
+                            $elementss = $_POST['element'];
+                            $N = count($elementss);
+                            for($i=0; $i < $N-1; $i++){                           
+                                echo($table->table_data[$elementss[$i]-1]['user_email']  . ", ");
+                            }
+                            echo($table->table_data[$elementss[$N - 1]-1]['user_email']);
+                        }
+                        else{
+                            echo("nobody. You didn't select any students.");
+                        }
+                    echo '</p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -366,8 +403,20 @@ function topadm_list_init()
             <div class="modal-dialog">
                 <div class="modal-content">
                 <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="discountModalLabel">New Discount For: '; 
-                    echo implode(", ", $selectedStudents);
+                    <h1 class="modal-title fs-5" id="discountModalLabel">New Discount For '; 
+                    if(isset($_POST['element'])){
+                        $elementss = $_POST['element'];
+                        $N = count($elementss);
+
+                        echo("$N student(s): ");
+                        for($i=0; $i < $N-1; $i++){
+                            echo($table->table_data[$elementss[$i]-1]['display_name']  . ", ");
+                        }
+                        echo($table->table_data[$elementss[$N - 1]-1]['display_name']);
+                    }
+                    else{
+                        echo("nobody. You didn't select any students.");
+                    }
                 echo '</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -397,8 +446,20 @@ function topadm_list_init()
             <div class="modal-dialog">
                 <div class="modal-content">
                 <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="addclassModalLabel">Enrolling: '; 
-                    echo implode(", ", $selectedStudents);
+                    <h1 class="modal-title fs-5" id="addclassModalLabel">Enrolling '; 
+                    if(isset($_POST['element'])){
+                        $elementss = $_POST['element'];
+                        $N = count($elementss);
+
+                        echo("$N student(s): ");
+                        for($i=0; $i < $N-1; $i++){
+                            echo($table->table_data[$elementss[$i]-1]['display_name']  . ", ");
+                        }
+                        echo($table->table_data[$elementss[$N - 1]-1]['display_name']);
+                    }
+                    else{
+                        echo("nobody. You didn't select any students.");
+                    }
                 echo '</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -438,8 +499,20 @@ function topadm_list_init()
             <div class="modal-dialog">
                 <div class="modal-content">
                 <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="removeclassModalLabel">Removing: '; 
-                    echo implode(", ", $selectedStudents);
+                    <h1 class="modal-title fs-5" id="removeclassModalLabel">Removing '; 
+                    if(isset($_POST['element'])){
+                        $elementss = $_POST['element'];
+                        $N = count($elementss);
+
+                        echo("$N student(s): ");
+                        for($i=0; $i < $N-1; $i++){
+                            echo($table->table_data[$elementss[$i]-1]['display_name']  . ", ");
+                        }
+                        echo($table->table_data[$elementss[$N - 1]-1]['display_name']);
+                    }
+                    else{
+                        echo("nobody. You didn't select any students.");
+                    }
                 echo '</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -486,8 +559,9 @@ function topadm_list_init()
             column[i].style.width="5em";
         }
     </script>';
+
+    echo '</form>';
 }   
 ?>
-    
 </body>
 </html>
