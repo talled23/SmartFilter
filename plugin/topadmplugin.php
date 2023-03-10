@@ -20,6 +20,10 @@ Version: 1.0
 
 // Loading WP_List_Table class file
 // We need to load it as it's not automatically loaded by WordPress
+
+$dir = plugin_dir_path( __FILE__ );
+require_once($dir.'emails.php');
+
 if (!class_exists('WP_List_Table')) {
       require_once(ABSPATH . 'wp-admin/includes/class-wp-list-table.php');
 }
@@ -63,7 +67,7 @@ class TOPAdm_List_Table extends WP_List_Table
     // define $table_data property
     public $table_data;
 
-    private $filters = array();
+    public $filters = array();
 
     // Define table columns
     function get_columns()
@@ -90,45 +94,57 @@ class TOPAdm_List_Table extends WP_List_Table
         
         return sprintf('%1$s %2$s', $item['display_name'], $this->row_actions($actions));
     }
-    private function get_table_data( $search = '' ) {
-        global $wpdb;
+    private function get_table_data() {
+        global $wpdb; 
 
         $table = $wpdb->prefix . 'users';
         $table2 = $wpdb->prefix . 'usermeta';
         $not = "";
         if(isset($_POST['not'])){
-            $not = "NOT";
+            $not = "NOT ";
         }
 
-        if(isset($_POST['sub']) && isset($_POST['s'])){
-            return $wpdb->get_results(
-                "SELECT * FROM {$table} JOIN {$table2} ON ID=user_id 
-                 WHERE meta_key='wp_capabilities' 
-                 AND $not meta_value LIKE '%subscriber%'
-                 AND display_name LIKE '%{$search}%'",
-                ARRAY_A
-            );
-        }
         if(isset($_POST['sub'])){
-            return $wpdb->get_results(
-                "SELECT * FROM {$table} JOIN {$table2} ON ID=user_id 
-                 WHERE meta_key='wp_capabilities' 
-                 AND $not meta_value LIKE '%subscriber%'",
-                ARRAY_A
-            );
+            array_push($this->filters, "" . $not . "SUBSCRIBER");
         }
-        if (isset($_POST['s'])) {
-            return $wpdb->get_results(
-                "SELECT * FROM {$table} JOIN {$table2} ON ID=user_id 
-                 WHERE meta_key='wp_capabilities' AND display_name LIKE '%{$search}%'",
-                ARRAY_A
-            );
-        } else {
-            return $wpdb->get_results(
-                "SELECT * FROM {$table} JOIN {$table2} ON ID=user_id WHERE meta_key='wp_capabilities'",
-                ARRAY_A
-            );
+
+        if(isset($_POST['s']) && $_POST['s'] != ''){
+            array_push($this->filters, "$not NAME LIKE " . $_POST['s']);
         }
+
+        if(isset($_POST['money']) && $_POST['money'] != ''){
+            switch($_POST['money']){
+                case 'pf':
+                    $str = "FULL";
+                    break;
+                case 'pc':
+                    $str = "COUPON";
+                    break;
+                case 'np':
+                    $str = "NOTHING";
+                    break;
+            }
+            array_push($this->filters, "$not PAYMENT OF " . $str);
+        }
+
+        if(isset($_POST['s4c']) && $_POST['s4c'] != ''){
+            array_push($this->filters, "$not COURSE LIKE " . $_POST['s4c']);
+        }
+        $stringy =  "SELECT ID, display_name, user_email, user_registered, pastcourses, curcourses, meta_value 
+        FROM {$table} JOIN {$table2} ON ID=user_id WHERE meta_key='wp_capabilities' "
+        . (isset($_POST['sub']) ? "AND " . $not . "meta_value LIKE '%subscriber%' " : "")
+        . ((isset($_POST['s']) && $_POST['s'] != '') ? "AND " . $not . "display_name LIKE '%{$_POST['s']}%' " : "")
+        . ((isset($_POST['s4c']) && $_POST['s4c'] != '') ? "AND " . $not . "curcourses LIKE '%{$_POST['s4c']}%' " : "")
+        . ((isset($_POST['money']) && $_POST['money'] != '') ? "AND " . $not . "curcourses LIKE '%{$_POST['money']}%' " : "");
+
+        
+        //echo $stringy;
+
+        return $wpdb->get_results(
+            $stringy
+            ,
+            ARRAY_A
+        );
     }
 
     protected function get_sortable_columns(){
@@ -157,12 +173,7 @@ class TOPAdm_List_Table extends WP_List_Table
     // Bind table with columns, data and all
     function prepare_items()
     {
-        if ( isset($_POST['s']) ) {
-            $this->table_data = $this->get_table_data($_POST['s']);
-        }
-        else {
-            $this->table_data = $this->get_table_data();
-        }
+        $this->table_data = $this->get_table_data();
 
         $columns = $this->get_columns();
         $hidden = array();
@@ -245,6 +256,8 @@ function topadm_list_init()
 {
         // Creating an instance
         $table = new TOPAdm_List_Table();
+        
+        $table->prepare_items();
 
         echo '<iframe name="votar" style="display:none;"></iframe>';
 
@@ -276,31 +289,18 @@ function topadm_list_init()
                     </label>
                 </div>
                 <div class="col-auto mx-1">
-                    <div class="dropdown btn-group">
-                        <button class="btn btn-secondary dropdown-toggle money" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            Payment Type
-                            <span class="caret"></span>
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item payment" href="#">Payment Type</a></li>
-                            <li><a class="dropdown-item payment" href="#">Paid Full</a></li>
-                            <li><a class="dropdown-item payment" href="#">Paid Coupon</a></li>
-                            <li><a class="dropdown-item payment" href="#">Not Paid</a></li>
-                        </ul>
-                    </div>
+                    <select name="money" id="money">
+                        <option value="">Payment Type</option>
+                        <option value="pf">Paid Full</option>
+                        <option value="pc">Paid Coupon</option>
+                        <option value="np">Not Paid</option>
+                    </select>
                 </div>
                 <div class="col-auto mx-1">
-                    <div class="dropdown btn-group">
-                        <button class="btn btn-secondary dropdown-toggle courses" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            In Course
-                            <span class="caret"></span>
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item course" href="#">In Course</a></li>
-                            <li><a class="dropdown-item course" href="#">Test Course 1</a></li>
-                            <li><a class="dropdown-item course" href="#">Test Course 2</a></li>
-                            <li><a class="dropdown-item course" href="#">Test Course 3</a></li>
-                        </ul>
+                    <div class="row g-2" role="search">
+                        <div class="col-auto">
+                            <input class="form-control me-2" id="search_id-search-input" type="search" placeholder="Search for Course" aria-label="Search" name="s4c">
+                        </div>
                     </div>
                 </div>
                 <div class="col-auto mx-1">
@@ -309,10 +309,25 @@ function topadm_list_init()
             </div>
         ';
         echo '</form>';
+
+    echo '
+        <div>
+            <h2 class="my=2">List of current filters applied (click to remove):</h2>
+            <div class="list-group">';
+                $filter_list = $table->filters;
+            for($i = 0; $i < count($filter_list); $i++){
+                echo '<button href="#" class="list-group-item list-group-item-action">';
+                echo $filter_list[$i];
+                echo'</button>';
+            }
+            echo'
+            </div>
+        </div>
+    ';
         
     // Prepare table
     echo '<form method="POST">';
-    $table->prepare_items();
+    
     // Display table
     $table->display();
 
@@ -323,7 +338,7 @@ function topadm_list_init()
     echo '<h2>Group Actions:</h2>';
 
     echo '
-        <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#emailModal">Email Students</button>
+        <button type="button" onclick="sendEmails()" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#emailModal">Email Students</button>
 
         <div class="modal fade" id="emailModal" tabindex="-1" aria-labelledby="emailModalLabel" aria-hidden="true">
             <div class="modal-dialog">
@@ -561,7 +576,39 @@ function topadm_list_init()
     </script>';
 
     echo '</form>';
+
+
+    echo '
+    
+    <script>
+
+        function sendEmails() {
+            console.log("test");
+            var selected = "hey";
+            var event_id = 3;
+            $.ajax({
+                type: "POST",
+                dataType: "json",
+                url: "./admin.php",
+                data: "action=signup&selected=" + selected + "&event_id=" + event_id,
+                complete: function(data) {
+                    console.log("it worked!");
+                    console.log(data);
+                }
+            });
+        }
+    </script>
+    ';//var json = JSON.parse(JSON.stringify(data));
+
 }   
 ?>
+
+<?php
+    // $selected = filter_input(INPUT_POST, "selected");
+    // $event_id = filter_input(INPUT_POST, "event_id");
+    // $data = "hey";
+    // echo $data;
+?>
+
 </body>
 </html>
