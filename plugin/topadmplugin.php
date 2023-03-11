@@ -130,7 +130,7 @@ class TOPAdm_List_Table extends WP_List_Table
         if(isset($_POST['s4c']) && $_POST['s4c'] != ''){
             array_push($this->filters, "$not COURSE LIKE " . $_POST['s4c']);
         }
-        $stringy =  "SELECT ID, display_name, user_email, user_registered, pastcourses, curcourses, meta_value 
+        $stringy =  "SELECT ID, display_name, user_email, user_registered, pastcourses, curcourses, meta_value
         FROM {$table} JOIN {$table2} ON ID=user_id WHERE meta_key='wp_capabilities' "
         . (isset($_POST['sub']) ? "AND " . $not . "meta_value LIKE '%subscriber%' " : "")
         . ((isset($_POST['s']) && $_POST['s'] != '') ? "AND " . $not . "display_name LIKE '%{$_POST['s']}%' " : "")
@@ -204,12 +204,20 @@ class TOPAdm_List_Table extends WP_List_Table
     {
           switch ($column_name) {
                 case 'ID':
+                    return $item[$column_name];
                 case 'display_name':
+                    return $item[$column_name];
                 case 'user_email':
+                    return $item[$column_name];
                 case 'user_registered':
+                    return $item[$column_name];
                 case 'pastcourses':
+                    return $item[$column_name];
                 case 'curcourses':
+                    return $item[$column_name];
                 case 'meta_value':
+                    $crop1 = substr($item[$column_name], strpos($item[$column_name], '"')+1);
+                    return ucfirst(substr($crop1, 0, -7));
                 default:
                     return $item[$column_name];
           }
@@ -316,7 +324,7 @@ function topadm_list_init()
             <div class="list-group">';
                 $filter_list = $table->filters;
             for($i = 0; $i < count($filter_list); $i++){
-                echo '<button href="#" class="list-group-item list-group-item-action">';
+                echo '<button href="#" name="filtersss[]" value="' . $filter_list[$i] . '" class="list-group-item list-group-item-action">';
                 echo $filter_list[$i];
                 echo'</button>';
             }
@@ -598,7 +606,9 @@ function topadm_list_init()
             });
         }
     </script>
-    ';//var json = JSON.parse(JSON.stringify(data));
+    ';
+    
+    //var json = JSON.parse(JSON.stringify(data));
 
 }   
 ?>
@@ -609,6 +619,7 @@ function topadm_list_init()
     // $data = "hey";
     // echo $data;
 ?>
+
 
 </body>
 </html>
