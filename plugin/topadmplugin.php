@@ -267,6 +267,30 @@ function topadm_list_init()
         
         $table->prepare_items();
 
+
+        global $wpdb; 
+
+        $tablee = $wpdb->prefix . 'users';
+        $tablee2 = $wpdb->prefix . 'usermeta';
+        $tablee3 = $wpdb->prefix . 'posts';
+
+        //$sqlCode = "SELECT ID, display_name, user_email, user_registered, pastcourses, curcourses, meta_value
+        //FROM {$tablee} JOIN {$tablee2} ON ID=user_id WHERE meta_key='wp_capabilities' ";
+
+        $sqlCode = "SELECT * FROM {$tablee3} WHERE post_status='publish' and post_type='sfwd-courses'";
+        
+        $ret = $wpdb->get_results(
+            $sqlCode,
+            ARRAY_A
+        );
+
+        for($i = 0; $i < count($ret); $i++){
+            print_r($ret[$i]['post_title']);
+        }
+        
+    
+        
+
         echo '<iframe name="votar" style="display:none;"></iframe>';
 
         echo '<div class="wrap"><h1>T.O.P. Smart Nutrition Administration Page</h2>';
@@ -489,19 +513,15 @@ function topadm_list_init()
                 <div class="modal-body">
                     <form>
                         <div class="mb-3">
-                            <h3>Enroll these students into:
-                            <div class="dropdown btn-group">
-                                <button class="btn btn-secondary dropdown-toggle courses" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    Select Course
-                                    <span class="caret"></span>
-                                </button>
-                                <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item course" href="#">Select Course</a></li>
-                                    <li><a class="dropdown-item course" href="#">Test Course 1</a></li>
-                                    <li><a class="dropdown-item course" href="#">Test Course 2</a></li>
-                                    <li><a class="dropdown-item course" href="#">Test Course 3</a></li>
-                                </ul>
-                            </div>
+                            <h3>Enroll these students into:                    
+                            <select name="courses" id="courses">
+                                <option value="">Select Course</option>';
+                                for($i = 0; $i < count($ret); $i++){
+                                    echo "<option value='" . $ret[$i]['ID'] ."'>" . $ret[$i]['post_title'] . "</option>";
+                                }
+                echo '                         
+                            </select>
+                            
                         </div>
                     </form>
                 </div>
@@ -539,34 +559,33 @@ function topadm_list_init()
                 echo '</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
-                    <form>
+                <form method="POST">
+                    <div class="modal-body">
                         <div class="mb-3">
                             <h3>Remove these students from:
-                            <div class="dropdown btn-group">
-                                <button class="btn btn-secondary dropdown-toggle courses" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    Select Course
-                                    <span class="caret"></span>
-                                </button>
-                                <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item course" href="#">Select Course</a></li>
-                                    <li><a class="dropdown-item course" href="#">Test Course 1</a></li>
-                                    <li><a class="dropdown-item course" href="#">Test Course 2</a></li>
-                                    <li><a class="dropdown-item course" href="#">Test Course 3</a></li>
-                                </ul>
-                            </div>
+                            <select name="courses[]" id="courses">
+                                <option value="">Select Course</option>';
+                                for($i = 0; $i < count($ret); $i++){
+                                    echo "<option value='" . $ret[$i]['ID'] ."'>" . $ret[$i]['post_title'] . "</option>";
+                                }
+                    echo '                         
+                            </select>
                         </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary">Enroll students</button>
-                </div>
-                </div>
+                    </div>
+                
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Enroll students</button>
+                    </div>
+                </form>
             </div>
         </div>
     
     ';
+
+    // if($_POST['courses'] != ''){
+    //     echo '<script>alert("selected course lmao");</script>';
+    // }
 
 
     echo '<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>';
