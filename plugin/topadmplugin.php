@@ -7,7 +7,7 @@
 </head>
   <body>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js" integrity="sha384-w76AqPfDkMBDXo30jS1Sgez6pr3x5MlQ1ZAGC+nuZB+EYdgRZgiwxhTBTkF7CXvN" crossorigin="anonymous"></script>
-
+    
 
 <?php
 
@@ -80,7 +80,8 @@ class TOPAdm_List_Table extends WP_List_Table
                 'user_registered'   => __('User Registered', 'topadm-cookie-consent'),
                 'pastcourses'   => __('Past Courses', 'topadm-cookie-consent'),
                 'curcourses'   => __('Current Courses', 'topadm-cookie-consent'),
-                'meta_value'   => __('Capabilities', 'topadm-cookie-consent')
+                'capabilities'   => __('Capabilities', 'topadm-cookie-consent'),
+                'access2'   => __('Actual Course Enrollment (WIP)', 'topadm-cookie-consent')
         );
         return $columns;
     }
@@ -88,18 +89,26 @@ class TOPAdm_List_Table extends WP_List_Table
     // Adding action links to column
     function column_display_name($item)
     {
-        $actions = array(
-                'edit2'      => sprintf('<a href="?page=%s&action=%s&element=%s">' . __('Edit', 'plugintest') . '</a>', $_REQUEST['page'], 'edit2', $item['ID']),
-        );
+        // $actions = array(
+        //         'edit2'      => sprintf('<a href="?page=%s&action=%s&element=%s">' . __('Edit', 'plugintest') . '</a>', $_REQUEST['page'], 'edit2', $item['ID']),
+        // );
         
-        return sprintf('%1$s %2$s', $item['display_name'], $this->row_actions($actions));
+        //return sprintf('%1$s %2$s', $item['display_name'], $this->row_actions($actions));
+        return sprintf('%1$s', $item['display_name']);
     }
     private function get_table_data() {
         global $wpdb; 
 
+        
+
         $table = $wpdb->prefix . 'users';
         $table2 = $wpdb->prefix . 'usermeta';
+        $table3 = $wpdb->prefix . 'posts';
         $not = "";
+
+        if(isset($_POST['filtersss'])){
+            $this->filters = $_POST['filtersss'];
+        }
         if(isset($_POST['not'])){
             $not = "NOT ";
         }
@@ -109,7 +118,7 @@ class TOPAdm_List_Table extends WP_List_Table
         }
 
         if(isset($_POST['s']) && $_POST['s'] != ''){
-            array_push($this->filters, "$not NAME LIKE " . $_POST['s']);
+            array_push($this->filters, "" . $not . "NAME LIKE " . $_POST['s']);
         }
 
         if(isset($_POST['money']) && $_POST['money'] != ''){
@@ -124,24 +133,42 @@ class TOPAdm_List_Table extends WP_List_Table
                     $str = "NOTHING";
                     break;
             }
-            array_push($this->filters, "$not PAYMENT OF " . $str);
+            array_push($this->filters, "" . $not . "PAYMENT OF " . $str);
         }
 
         if(isset($_POST['s4c']) && $_POST['s4c'] != ''){
             array_push($this->filters, "$not COURSE LIKE " . $_POST['s4c']);
         }
-        $stringy =  "SELECT ID, display_name, user_email, user_registered, pastcourses, curcourses, meta_value
-        FROM {$table} JOIN {$table2} ON ID=user_id WHERE meta_key='wp_capabilities' "
-        . (isset($_POST['sub']) ? "AND " . $not . "meta_value LIKE '%subscriber%' " : "")
+
+        //SELECT ID, display_name, user_email, user_registered, pastcourses, curcourses, capabilities, access FROM wp_users JOIN (SELECT meta_value as capabilities FROM wp_usermeta WHERE meta_key='wp_capabilities') AS T1 ON ID=user_id JOIN (SELECT meta_value as access FROM wp_usermeta WHERE meta_key like 'course_%_access_From') AS T2 ON ID=user_id
+        //SELECT ID, display_name, user_email, user_registered, pastcourses, curcourses, capabilities, access FROM wp_users JOIN (SELECT user_id, meta_key, meta_value as capabilities FROM wp_usermeta WHERE meta_key='wp_capabilities') AS T1 ON ID=user_id JOIN (SELECT user_id, meta_key, meta_value as access FROM wp_usermeta WHERE meta_key like 'course_%_access_From') AS T2 ON ID=user_id
+        //SELECT ID, display_name, user_email, user_registered, pastcourses, curcourses, access FROM wp_users LEFT JOIN (SELECT user_id, meta_key as access FROM wp_usermeta WHERE meta_key like 'course_%_access_From') AS T2 ON ID=user_id
+        //SELECT ID, display_name, user_email, user_registered, pastcourses, curcourses, access, capabilities FROM (SELECT * FROM wp_users LEFT JOIN (SELECT user_id as user_id2, meta_key as access FROM wp_usermeta WHERE meta_key like 'course_%_access_From') AS T2 ON ID=user_id2) AS T3 JOIN (SELECT user_id as user_id1, meta_key, meta_value as capabilities FROM wp_usermeta WHERE meta_key='wp_capabilities') AS T1 ON ID=user_id1
+        //SELECT ID, display_name, user_email, user_registered, pastcourses, curcourses, access, capabilities FROM (SELECT * FROM wp_users LEFT JOIN (SELECT user_id as user_id2, SUBSTRING(meta_key, 8, (LENGTH(meta_key) - 19))  as access FROM wp_usermeta WHERE meta_key like 'course_%_access_From') AS T2 ON ID=user_id2) AS T3 JOIN (SELECT user_id as user_id1, meta_key, meta_value as capabilities FROM wp_usermeta WHERE meta_key='wp_capabilities') AS T1 ON ID=user_id1
+        
+        //SELECT ID, display_name, user_email, user_registered, pastcourses, curcourses, access2, capabilities FROM (SELECT * FROM wp_users LEFT JOIN (SELECT * FROM (SELECT user_id as user_id2, SUBSTRING(meta_key, 8, (LENGTH(meta_key) - 19)) as access FROM wp_usermeta WHERE meta_key like 'course_%_access_From') AS T1 JOIN (SELECT ID, post_title as access2 FROM wp_posts) AS T2 ON access=ID) AS T2 ON ID=user_id2) AS T3 JOIN (SELECT user_id as user_id1, meta_key, meta_value as capabilities FROM wp_usermeta WHERE meta_key='wp_capabilities') AS T1 ON ID=user_id1
+        
+        // $stringy =  "SELECT ID, display_name, user_email, user_registered, pastcourses, curcourses, meta_value
+        // FROM {$table} JOIN {$table2} ON ID=user_id WHERE meta_key='wp_capabilities' "
+        // . (isset($_POST['sub']) ? "AND " . $not . "meta_value LIKE '%subscriber%' " : "")
+        // . ((isset($_POST['s']) && $_POST['s'] != '') ? "AND " . $not . "display_name LIKE '%{$_POST['s']}%' " : "")
+        // . ((isset($_POST['s4c']) && $_POST['s4c'] != '') ? "AND " . $not . "curcourses LIKE '%{$_POST['s4c']}%' " : "")
+        // . ((isset($_POST['money']) && $_POST['money'] != '') ? "AND " . $not . "curcourses LIKE '%{$_POST['money']}%' " : "");
+
+        $stringy2 = "SELECT ID, display_name, user_email, user_registered, pastcourses, curcourses, access2, capabilities 
+        FROM (SELECT * FROM {$table} LEFT JOIN 
+        (SELECT * FROM 
+        (SELECT user_id as user_id2, SUBSTRING(meta_key, 8, (LENGTH(meta_key) - 19)) as access FROM {$table2} WHERE meta_key like 'course_%_access_From') AS T1 
+        JOIN (SELECT ID as ID2, post_title as access2 FROM {$table3}) AS T2 ON access=ID2) AS T2 ON ID=user_id2) AS T3 
+        JOIN (SELECT user_id as user_id1, meta_key, meta_value as capabilities FROM {$table2} WHERE meta_key='wp_capabilities') AS T1 ON ID=user_id1 WHERE ID IS NOT NULL "
+        . (isset($_POST['sub']) ? "AND " . $not . "capabilities LIKE '%subscriber%' " : "")
         . ((isset($_POST['s']) && $_POST['s'] != '') ? "AND " . $not . "display_name LIKE '%{$_POST['s']}%' " : "")
         . ((isset($_POST['s4c']) && $_POST['s4c'] != '') ? "AND " . $not . "curcourses LIKE '%{$_POST['s4c']}%' " : "")
         . ((isset($_POST['money']) && $_POST['money'] != '') ? "AND " . $not . "curcourses LIKE '%{$_POST['money']}%' " : "");
 
-        
-        //echo $stringy;
 
         return $wpdb->get_results(
-            $stringy
+            $stringy2
             ,
             ARRAY_A
         );
@@ -215,7 +242,9 @@ class TOPAdm_List_Table extends WP_List_Table
                     return $item[$column_name];
                 case 'curcourses':
                     return $item[$column_name];
-                case 'meta_value':
+                case 'access2':
+                    return $item[$column_name];
+                case 'capabilities':
                     $crop1 = substr($item[$column_name], strpos($item[$column_name], '"')+1);
                     return ucfirst(substr($crop1, 0, -7));
                 default:
@@ -284,9 +313,9 @@ function topadm_list_init()
             ARRAY_A
         );
 
-        for($i = 0; $i < count($ret); $i++){
-            print_r($ret[$i]['post_title']);
-        }
+        // for($i = 0; $i < count($ret); $i++){
+        //     print_r($ret[$i]['post_title']);
+        // }
         
     
         
@@ -340,7 +369,7 @@ function topadm_list_init()
                 </div>
             </div>
         ';
-        echo '</form>';
+
 
     echo '
         <div>
@@ -348,17 +377,28 @@ function topadm_list_init()
             <div class="list-group">';
                 $filter_list = $table->filters;
             for($i = 0; $i < count($filter_list); $i++){
-                echo '<button href="#" name="filtersss[]" value="' . $filter_list[$i] . '" class="list-group-item list-group-item-action">';
-                echo $filter_list[$i];
-                echo'</button>';
+                echo'
+                <label class="checkbox" for="flexCheckChecked'. $i .'">
+                    <div class="form-group align-items-center list-group-item form-check my-1">
+                        <input type="checkbox" name="filtersss[]" value="' . $filter_list[$i] . '" id="flexCheckChecked'. $i .'" checked>
+                        <span>' . $filter_list[$i] . '</span>
+                    </div>
+                </label>
+                ';
             }
             echo'
             </div>
         </div>
     ';
+
+    echo '</form>';
+
+    
         
     // Prepare table
     echo '<form method="POST">';
+
+    
     
     // Display table
     $table->display();
@@ -604,7 +644,10 @@ function topadm_list_init()
 
     echo '</form>';
 
-
+    //echo '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD" crossorigin="anonymous">';
+    
+    //echo '<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js" integrity="sha384-w76AqPfDkMBDXo30jS1Sgez6pr3x5MlQ1ZAGC+nuZB+EYdgRZgiwxhTBTkF7CXvN" crossorigin="anonymous"></script>';
+    
     echo '
     
     <script>
