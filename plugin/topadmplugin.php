@@ -137,7 +137,7 @@ class TOPAdm_List_Table extends WP_List_Table
         }
 
         if(isset($_POST['s4c']) && $_POST['s4c'] != ''){
-            array_push($this->filters, "$not COURSE LIKE " . $_POST['s4c']);
+            array_push($this->filters, "" . $not . "COURSE LIKE " . $_POST['s4c']);
         }
 
         //SELECT ID, display_name, user_email, user_registered, pastcourses, curcourses, capabilities, access FROM wp_users JOIN (SELECT meta_value as capabilities FROM wp_usermeta WHERE meta_key='wp_capabilities') AS T1 ON ID=user_id JOIN (SELECT meta_value as access FROM wp_usermeta WHERE meta_key like 'course_%_access_From') AS T2 ON ID=user_id
@@ -160,12 +160,71 @@ class TOPAdm_List_Table extends WP_List_Table
         (SELECT * FROM 
         (SELECT user_id as user_id2, SUBSTRING(meta_key, 8, (LENGTH(meta_key) - 19)) as access FROM {$table2} WHERE meta_key like 'course_%_access_From') AS T1 
         JOIN (SELECT ID as ID2, post_title as access2 FROM {$table3}) AS T2 ON access=ID2) AS T2 ON ID=user_id2) AS T3 
-        JOIN (SELECT user_id as user_id1, meta_key, meta_value as capabilities FROM {$table2} WHERE meta_key='wp_capabilities') AS T1 ON ID=user_id1 WHERE ID IS NOT NULL "
-        . (isset($_POST['sub']) ? "AND " . $not . "capabilities LIKE '%subscriber%' " : "")
-        . ((isset($_POST['s']) && $_POST['s'] != '') ? "AND " . $not . "display_name LIKE '%{$_POST['s']}%' " : "")
-        . ((isset($_POST['s4c']) && $_POST['s4c'] != '') ? "AND " . $not . "curcourses LIKE '%{$_POST['s4c']}%' " : "")
-        . ((isset($_POST['money']) && $_POST['money'] != '') ? "AND " . $not . "curcourses LIKE '%{$_POST['money']}%' " : "");
+        JOIN (SELECT user_id as user_id1, meta_key, meta_value as capabilities FROM {$table2} WHERE meta_key='wp_capabilities') AS T1 ON ID=user_id1 WHERE ID IS NOT NULL ";
+        
 
+        $filterList = $this->filters;
+        $n = count($filterList);
+
+        for($i=0; $i < $n; $i++){
+            $stringy = $filterList[$i];
+            $wordList = explode(' ', $stringy);
+            if($wordList[0] == 'NOT'){
+                if($wordList[1] == 'SUBSCRIBER'){
+                    $stringy2 .= "AND NOT capabilities LIKE '%subscriber%' ";
+                }
+                elseif($wordList[1] == 'PAYMENT'){
+                    if($wordList[3] == 'FULL'){
+                        $stringy2 .= "AND NOT curcourses LIKE '%pf%' ";
+                    }
+                    if($wordList[3] == 'COUPON'){
+                        $stringy2 .= "AND NOT curcourses LIKE '%pc%' ";
+                    }
+                    if($wordList[3] == 'NOTHING'){
+                        $stringy2 .= "AND NOT curcourses LIKE '%np%' ";
+                    }
+                }
+                elseif($wordList[1] == 'NAME'){
+                    $s = "AND NOT display_name LIKE '%" . substr($stringy, 14) . "%' ";
+                    $stringy2 .= $s;
+                }
+                elseif($wordList[1] == 'COURSE'){
+                    $s = "AND NOT curcourses LIKE '%" . substr($stringy, 16) . "%' ";
+                    $stringy2 .= $s;
+                }
+            }
+            else{
+                if($wordList[0] == 'SUBSCRIBER'){
+                    $stringy2 .= "AND capabilities LIKE '%subscriber%' ";
+                }
+                elseif($wordList[0] == 'PAYMENT'){
+                    if($wordList[2] == 'FULL'){
+                        $stringy2 .= "AND curcourses LIKE '%pf%' ";
+                    }
+                    if($wordList[2] == 'COUPON'){
+                        $stringy2 .= "AND curcourses LIKE '%pc%' ";
+                    }
+                    if($wordList[2] == 'NOTHING'){
+                        $stringy2 .= "AND curcourses LIKE '%np%' ";
+                    }
+                }
+                elseif($wordList[0] == 'NAME'){
+                    $s = "AND display_name LIKE '%" . substr($stringy, 10) . "%' ";
+                    $stringy2 .= $s;
+                }
+                elseif($wordList[0] == 'COURSE'){
+                    $s = "AND curcourses LIKE '%" . substr($stringy, 12) . "%' ";
+                    $stringy2 .= $s;
+                }
+            }
+        }
+
+        // . (isset($_POST['sub']) ? "AND " . $not . "capabilities LIKE '%subscriber%' " : "")
+        // . ((isset($_POST['s']) && $_POST['s'] != '') ? "AND " . $not . "display_name LIKE '%{$_POST['s']}%' " : "")
+        // . ((isset($_POST['s4c']) && $_POST['s4c'] != '') ? "AND " . $not . "curcourses LIKE '%{$_POST['s4c']}%' " : "")
+        // . ((isset($_POST['money']) && $_POST['money'] != '') ? "AND " . $not . "curcourses LIKE '%{$_POST['money']}%' " : "");
+
+        //echo $stringy2;
 
         return $wpdb->get_results(
             $stringy2
@@ -291,17 +350,75 @@ add_action('admin_menu', 'my_add_menu_items');
 // Plugin menu callback function
 function topadm_list_init()
 {
-        // Creating an instance
-        $table = new TOPAdm_List_Table();
-        
-        $table->prepare_items();
-
 
         global $wpdb; 
 
         $tablee = $wpdb->prefix . 'users';
         $tablee2 = $wpdb->prefix . 'usermeta';
         $tablee3 = $wpdb->prefix . 'posts';
+
+
+        if(isset($_POST['coursesA']) && $_POST['coursesA']!=' '){
+            //echo '<script>alert(' . $_POST['coursesA'] . ') </script>';
+            if(isset($_POST['selectedStudentsA'])){
+                $studientes = $_POST['selectedStudentsA'];
+                $course = $_POST['coursesA'];
+                for($i = 0; $i < count($studientes); $i++){
+                    $maxthingy = $wpdb->get_results(
+                        "SELECT MAX(umeta_id) AS b FROM {$tablee2}"
+                        ,
+                        ARRAY_A
+                    );
+                    $maxthingy = $maxthingy[0]['b'];
+                    $maxthingy++;
+    
+                    $stringyyy = "INSERT INTO wp_usermeta 
+                    (umeta_id, user_id, meta_key, meta_value) 
+                    VALUES (" . $maxthingy . ", " . $studientes[$i] . ", 'course_" . $course . "_access_from', 
+                    UNIX_TIMESTAMP())";
+    
+                    $wpdb->query(
+                        $stringyyy
+                        ,
+                        ARRAY_A
+                    );
+                }
+            }
+        }
+
+        if(isset($_POST['coursesR']) && $_POST['coursesR']!=' '){
+            //echo '<script>alert(' . $_POST['coursesA'] . ') </script>';
+            if(isset($_POST['selectedStudentsR'])){
+                $studientes = $_POST['selectedStudentsR'];
+                $course = $_POST['coursesR'];
+                for($i = 0; $i < count($studientes); $i++){
+    
+                    $test = "SELECT 
+                    CASE WHEN EXISTS(
+                    SELECT * FROM {$tablee2} 
+                    WHERE user_id =" . $studientes[$i] . " AND meta_key = 'course_" . $course . "_access_from'
+                    ) then 1 else 0 end as found";
+
+                    $found = $wpdb->get_results($test, ARRAY_A);
+
+                    if($found[0]['found']){
+                        $stringyyy = "DELETE FROM {$tablee2}
+                        WHERE user_id = " . $studientes[$i] . " AND meta_key = 'course_" . $course . "_access_from'";
+
+                        $wpdb->query(
+                            $stringyyy
+                            ,
+                            ARRAY_A
+                        );
+                    }
+                }
+            }
+        }
+
+        // Creating an instance
+        $table = new TOPAdm_List_Table();
+        
+        $table->prepare_items();
 
         //$sqlCode = "SELECT ID, display_name, user_email, user_registered, pastcourses, curcourses, meta_value
         //FROM {$tablee} JOIN {$tablee2} ON ID=user_id WHERE meta_key='wp_capabilities' ";
@@ -316,9 +433,7 @@ function topadm_list_init()
         // for($i = 0; $i < count($ret); $i++){
         //     print_r($ret[$i]['post_title']);
         // }
-        
-    
-        
+
 
         echo '<iframe name="votar" style="display:none;"></iframe>';
 
@@ -413,10 +528,12 @@ function topadm_list_init()
         <button type="button" onclick="sendEmails()" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#emailModal">Email Students</button>
 
         <div class="modal fade" id="emailModal" tabindex="-1" aria-labelledby="emailModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
+            <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
-                <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="emailModalLabel">New email to '; 
+                <div class="modal-header">';
+
+
+                echo'<h1 class="modal-title fs-5" id="emailModalLabel">New email to '; 
                         //echo implode(", ", $selectedStudents);
                         if(isset($_POST['element'])){
                             $elementss = $_POST['element'];
@@ -487,7 +604,7 @@ function topadm_list_init()
         <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#discountModal">Apply Discount</button>
 
         <div class="modal fade" id="discountModal" tabindex="-1" aria-labelledby="discountModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
+            <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                 <div class="modal-header">
                     <h1 class="modal-title fs-5" id="discountModalLabel">New Discount For '; 
@@ -526,49 +643,106 @@ function topadm_list_init()
     
     ';
 
+    // echo '
+    //     <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#addclassModal">Enroll to Class</button>
+
+    //     <div class="modal fade" id="addclassModal" tabindex="-1" aria-labelledby="addclassModalLabel" aria-hidden="true">
+    //         <div class="modal-dialog modal-dialog-centered">
+    //             <div class="modal-content">
+    //                 <div class="modal-header">
+    //                     <h1 class="modal-title fs-5" id="addclassModalLabel">Enrolling '; 
+    //                     if(isset($_POST['element'])){
+    //                         $elementss = $_POST['element'];
+    //                         $N = count($elementss);
+
+    //                         echo("$N student(s): ");
+    //                         for($i=0; $i < $N-1; $i++){
+    //                             echo($table->table_data[$elementss[$i]-1]['display_name']  . ", ");
+    //                         }
+    //                         echo($table->table_data[$elementss[$N - 1]-1]['display_name']);
+    //                     }
+    //                     else{
+    //                         echo("nobody. You didn't select any students.");
+    //                     }
+    //                 echo '</h1>
+    //                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    //                 </div>
+    //                 <form method="POST">
+    //                     <div class="modal-body">
+    //                         <div class="mb-3">
+    //                             <h3>ENROLL these students into:                    
+    //                             <select name="courses" id="courses">
+    //                                 <option value="">Select Course</option>';
+    //                                 for($i = 0; $i < count($ret); $i++){
+    //                                     echo "<option value='" . $ret[$i]['ID'] ."'>" . $ret[$i]['post_title'] . "</option>";
+    //                                 }
+    //                             echo '                         
+    //                             </select>
+                                    
+    //                         </div>
+    //                     </div>
+    //                     <div class="modal-footer">
+    //                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+    //                         <button type="button" class="btn btn-primary">Enroll students</button>
+    //                     </div>
+    //                 </form>
+    //             </div>
+    //         </div>
+    //     </div>
+    
+    // ';
+
     echo '
-        <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#addclassModal">Enroll to Class</button>
+        <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#enrollclassModal">Enroll to Class</button>
 
-        <div class="modal fade" id="addclassModal" tabindex="-1" aria-labelledby="addclassModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
+        <div class="modal fade" id="enrollclassModal" tabindex="-1" aria-labelledby="enrollclassModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
-                <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="addclassModalLabel">Enrolling '; 
-                    if(isset($_POST['element'])){
-                        $elementss = $_POST['element'];
-                        $N = count($elementss);
+                    <div class="modal-header">
+                        <h1 class="modal-title fs-5" id="enrollclassModalLabel">Enrolling '; 
+                        if(isset($_POST['element'])){
+                            $elementss = $_POST['element'];
+                            $N = count($elementss);
 
-                        echo("$N student(s): ");
-                        for($i=0; $i < $N-1; $i++){
-                            echo($table->table_data[$elementss[$i]-1]['display_name']  . ", ");
+                            echo("$N student(s): ");
+                            for($i=0; $i < $N-1; $i++){
+                                echo($table->table_data[$elementss[$i]-1]['display_name']  . ", ");
+                            }
+                            echo($table->table_data[$elementss[$N - 1]-1]['display_name']);
                         }
-                        echo($table->table_data[$elementss[$N - 1]-1]['display_name']);
-                    }
-                    else{
-                        echo("nobody. You didn't select any students.");
-                    }
-                echo '</h1>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form>
-                        <div class="mb-3">
-                            <h3>Enroll these students into:                    
-                            <select name="courses" id="courses">
-                                <option value="">Select Course</option>';
-                                for($i = 0; $i < count($ret); $i++){
-                                    echo "<option value='" . $ret[$i]['ID'] ."'>" . $ret[$i]['post_title'] . "</option>";
-                                }
-                echo '                         
-                            </select>
-                            
+                        else{
+                            echo("nobody. You didn't select any students.");
+                        }
+                        echo '</h1>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form method="POST">';
+                        if(isset($_POST['element'])){
+                            $elementss = $_POST['element'];
+                            $N = count($elementss);
+                            for($i=0; $i < $N; $i++){
+                                echo '<input hidden type="checkbox" name="selectedStudentsA[]" value="' . $elementss[$i] . '" checked>';
+                            }
+                        }
+                        echo '
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <h3>ENROLL these students into:
+                                <select name="coursesA" id="coursesA">
+                                    <option value=" ">Select Course</option>';
+                                    for($i = 0; $i < count($ret); $i++){
+                                        echo "<option value='" . $ret[$i]['ID'] ."'>" . $ret[$i]['post_title'] . "</option>";
+                                    }
+                        echo '                         
+                                </select>
+                            </div>
+                        </div>
+                    
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-primary">Enroll students</button>
                         </div>
                     </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary">Enroll students</button>
-                </div>
                 </div>
             </div>
         </div>
@@ -579,49 +753,73 @@ function topadm_list_init()
         <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#removeclassModal">Remove from Class</button>
 
         <div class="modal fade" id="removeclassModal" tabindex="-1" aria-labelledby="removeclassModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
+            <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
-                <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="removeclassModalLabel">Removing '; 
-                    if(isset($_POST['element'])){
-                        $elementss = $_POST['element'];
-                        $N = count($elementss);
+                    <div class="modal-header">
+                        <h1 class="modal-title fs-5" id="removeclassModalLabel">Removing '; 
+                        if(isset($_POST['element'])){
+                            $elementss = $_POST['element'];
+                            $N = count($elementss);
 
-                        echo("$N student(s): ");
-                        for($i=0; $i < $N-1; $i++){
-                            echo($table->table_data[$elementss[$i]-1]['display_name']  . ", ");
+                            echo("$N student(s): ");
+                            for($i=0; $i < $N-1; $i++){
+                                echo($table->table_data[$elementss[$i]-1]['display_name']  . ", ");
+                            }
+                            echo($table->table_data[$elementss[$N - 1]-1]['display_name']);
                         }
-                        echo($table->table_data[$elementss[$N - 1]-1]['display_name']);
-                    }
-                    else{
-                        echo("nobody. You didn't select any students.");
-                    }
-                echo '</h1>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form method="POST">
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <h3>Remove these students from:
-                            <select name="courses[]" id="courses">
-                                <option value="">Select Course</option>';
-                                for($i = 0; $i < count($ret); $i++){
-                                    echo "<option value='" . $ret[$i]['ID'] ."'>" . $ret[$i]['post_title'] . "</option>";
-                                }
-                    echo '                         
-                            </select>
+                        else{
+                            echo("nobody. You didn't select any students.");
+                        }
+                        echo '</h1>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form method="POST">';
+                        if(isset($_POST['element'])){
+                            $elementss = $_POST['element'];
+                            $N = count($elementss);
+                            for($i=0; $i < $N; $i++){
+                                echo '<input hidden type="checkbox" name="selectedStudentsR[]" value="' . $elementss[$i] . '" checked>';
+                            }
+                        }
+                        echo '
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <h3>REMOVE these students from:
+                                <select name="coursesR" id="coursesR">
+                                    <option value=" ">Select Course</option>';
+                                    for($i = 0; $i < count($ret); $i++){
+                                        echo "<option value='" . $ret[$i]['ID'] ."'>" . $ret[$i]['post_title'] . "</option>";
+                                    }
+                        echo '                         
+                                </select>
+                            </div>
                         </div>
-                    </div>
-                
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="submit" class="btn btn-primary">Enroll students</button>
-                    </div>
-                </form>
+                    
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-primary">Remove students</button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     
     ';
+
+    
+
+    // if(isset($_POST['coursesR']) && $_POST['coursesR']!=' '){
+    //     //echo '<script>alert(' . $_POST['coursesR'] . ') </script>';
+    //     if(isset($_POST['selectedStudentsR'])){
+    //         echo '<script>alert("REMOVED STUDENTS: ';
+    //             $studientes = $_POST['selectedStudentsR'];
+    //             for($i = 0; $i < count($studientes); $i++){
+    //                 echo $studientes[$i] . " ";
+    //             }
+    //             echo ' into class ' . $_POST['coursesR'];
+    //         echo '")</script>';
+    //     }
+    // }
 
     // if($_POST['courses'] != ''){
     //     echo '<script>alert("selected course lmao");</script>';
