@@ -78,10 +78,9 @@ class TOPAdm_List_Table extends WP_List_Table
                 'display_name'          => __('Display Name', 'topadm-cookie-consent'),
                 'user_email'         => __('Email', 'topadm-cookie-consent'),
                 'user_registered'   => __('User Registered', 'topadm-cookie-consent'),
-                'pastcourses'   => __('Past Courses', 'topadm-cookie-consent'),
-                'curcourses'   => __('Current Courses', 'topadm-cookie-consent'),
+                'payment'   => __('Payment', 'topadm-cookie-consent'),
                 'capabilities'   => __('Capabilities', 'topadm-cookie-consent'),
-                'access2'   => __('Actual Course Enrollment (WIP)', 'topadm-cookie-consent')
+                'access2'   => __('Course Enrollment', 'topadm-cookie-consent')
         );
         return $columns;
     }
@@ -101,7 +100,7 @@ class TOPAdm_List_Table extends WP_List_Table
 
         
 
-        $table = $wpdb->prefix . 'users';
+        $table = $wpdb->prefix . 'usersFake';
         $table2 = $wpdb->prefix . 'usermeta';
         $table3 = $wpdb->prefix . 'posts';
         $not = "";
@@ -118,7 +117,8 @@ class TOPAdm_List_Table extends WP_List_Table
         }
 
         if(isset($_POST['s']) && $_POST['s'] != ''){
-            array_push($this->filters, "" . $not . "NAME LIKE " . $_POST['s']);
+            $sString = $_POST['s'];
+            array_push($this->filters, "" . $not . "NAME LIKE " . $sString);
         }
 
         if(isset($_POST['money']) && $_POST['money'] != ''){
@@ -126,9 +126,9 @@ class TOPAdm_List_Table extends WP_List_Table
                 case 'pf':
                     $str = "FULL";
                     break;
-                case 'pc':
-                    $str = "COUPON";
-                    break;
+                // case 'pc':
+                //     $str = "COUPON";
+                //     break;
                 case 'np':
                     $str = "NOTHING";
                     break;
@@ -137,7 +137,8 @@ class TOPAdm_List_Table extends WP_List_Table
         }
 
         if(isset($_POST['s4c']) && $_POST['s4c'] != ''){
-            array_push($this->filters, "" . $not . "COURSE LIKE " . $_POST['s4c']);
+            $s4cString = $_POST['s4c'];
+            array_push($this->filters, "" . $not . "COURSE LIKE " . $s4cString);
         }
 
         //SELECT ID, display_name, user_email, user_registered, pastcourses, curcourses, capabilities, access FROM wp_users JOIN (SELECT meta_value as capabilities FROM wp_usermeta WHERE meta_key='wp_capabilities') AS T1 ON ID=user_id JOIN (SELECT meta_value as access FROM wp_usermeta WHERE meta_key like 'course_%_access_From') AS T2 ON ID=user_id
@@ -155,12 +156,13 @@ class TOPAdm_List_Table extends WP_List_Table
         // . ((isset($_POST['s4c']) && $_POST['s4c'] != '') ? "AND " . $not . "curcourses LIKE '%{$_POST['s4c']}%' " : "")
         // . ((isset($_POST['money']) && $_POST['money'] != '') ? "AND " . $not . "curcourses LIKE '%{$_POST['money']}%' " : "");
 
-        $stringy2 = "SELECT ID, display_name, user_email, user_registered, pastcourses, curcourses, access2, capabilities 
-        FROM (SELECT * FROM {$table} LEFT JOIN 
+        $sqlQuery = "SELECT * FROM (SELECT ID, display_name, user_email, user_registered, payment, GROUP_CONCAT(access1 ORDER BY access1 ASC SEPARATOR ', ') as access2, capabilities 
+        FROM (SELECT * FROM `wp_usersFake`  LEFT JOIN 
         (SELECT * FROM 
-        (SELECT user_id as user_id2, SUBSTRING(meta_key, 8, (LENGTH(meta_key) - 19)) as access FROM {$table2} WHERE meta_key like 'course_%_access_From') AS T1 
-        JOIN (SELECT ID as ID2, post_title as access2 FROM {$table3}) AS T2 ON access=ID2) AS T2 ON ID=user_id2) AS T3 
-        JOIN (SELECT user_id as user_id1, meta_key, meta_value as capabilities FROM {$table2} WHERE meta_key='wp_capabilities') AS T1 ON ID=user_id1 WHERE ID IS NOT NULL ";
+        (SELECT user_id as user_id2, SUBSTRING(meta_key, 8, (LENGTH(meta_key) - 19)) as access FROM `wp_usermeta`  WHERE meta_key like 'course_%_access_From') AS T1 
+        JOIN (SELECT ID as ID2, post_title as access1 FROM `wp_posts`) AS T2 ON access=ID2) AS T2 ON ID=user_id2) AS T3 
+        JOIN (SELECT user_id as user_id1, meta_key, meta_value as capabilities FROM `wp_usermeta`  WHERE meta_key='wp_capabilities') AS T1 ON ID=user_id1 WHERE ID IS NOT NULL GROUP BY ID) AS TF
+        WHERE ID IS NOT NULL ";
         
 
         $filterList = $this->filters;
@@ -171,50 +173,50 @@ class TOPAdm_List_Table extends WP_List_Table
             $wordList = explode(' ', $stringy);
             if($wordList[0] == 'NOT'){
                 if($wordList[1] == 'SUBSCRIBER'){
-                    $stringy2 .= "AND NOT capabilities LIKE '%subscriber%' ";
+                    $sqlQuery .= "AND NOT capabilities LIKE '%subscriber%' ";
                 }
                 elseif($wordList[1] == 'PAYMENT'){
                     if($wordList[3] == 'FULL'){
-                        $stringy2 .= "AND NOT curcourses LIKE '%pf%' ";
+                        $sqlQuery .= "AND NOT payment LIKE 'Paid' ";
                     }
-                    if($wordList[3] == 'COUPON'){
-                        $stringy2 .= "AND NOT curcourses LIKE '%pc%' ";
-                    }
+                    // if($wordList[3] == 'COUPON'){
+                    //     $sqlQuery .= "AND NOT curcourses LIKE '%pc%' ";
+                    // }
                     if($wordList[3] == 'NOTHING'){
-                        $stringy2 .= "AND NOT curcourses LIKE '%np%' ";
+                        $sqlQuery .= "AND NOT payment LIKE 'Not Paid' ";
                     }
                 }
                 elseif($wordList[1] == 'NAME'){
                     $s = "AND NOT display_name LIKE '%" . substr($stringy, 14) . "%' ";
-                    $stringy2 .= $s;
+                    $sqlQuery .= $s;
                 }
                 elseif($wordList[1] == 'COURSE'){
-                    $s = "AND NOT curcourses LIKE '%" . substr($stringy, 16) . "%' ";
-                    $stringy2 .= $s;
+                    $s = "AND NOT access2 LIKE '%" . substr($stringy, 16) . "%' ";
+                    $sqlQuery .= $s;
                 }
             }
             else{
                 if($wordList[0] == 'SUBSCRIBER'){
-                    $stringy2 .= "AND capabilities LIKE '%subscriber%' ";
+                    $sqlQuery .= "AND capabilities LIKE '%subscriber%' ";
                 }
                 elseif($wordList[0] == 'PAYMENT'){
                     if($wordList[2] == 'FULL'){
-                        $stringy2 .= "AND curcourses LIKE '%pf%' ";
+                        $sqlQuery .= "AND payment LIKE 'Paid' ";
                     }
-                    if($wordList[2] == 'COUPON'){
-                        $stringy2 .= "AND curcourses LIKE '%pc%' ";
-                    }
+                    // if($wordList[2] == 'COUPON'){
+                    //     $sqlQuery .= "AND curcourses LIKE '%pc%' ";
+                    // }
                     if($wordList[2] == 'NOTHING'){
-                        $stringy2 .= "AND curcourses LIKE '%np%' ";
+                        $sqlQuery .= "AND payment LIKE 'Not Paid' ";
                     }
                 }
                 elseif($wordList[0] == 'NAME'){
                     $s = "AND display_name LIKE '%" . substr($stringy, 10) . "%' ";
-                    $stringy2 .= $s;
+                    $sqlQuery .= $s;
                 }
                 elseif($wordList[0] == 'COURSE'){
-                    $s = "AND curcourses LIKE '%" . substr($stringy, 12) . "%' ";
-                    $stringy2 .= $s;
+                    $s = "AND access2 LIKE '%" . substr($stringy, 12) . "%' ";
+                    $sqlQuery .= $s;
                 }
             }
         }
@@ -224,10 +226,12 @@ class TOPAdm_List_Table extends WP_List_Table
         // . ((isset($_POST['s4c']) && $_POST['s4c'] != '') ? "AND " . $not . "curcourses LIKE '%{$_POST['s4c']}%' " : "")
         // . ((isset($_POST['money']) && $_POST['money'] != '') ? "AND " . $not . "curcourses LIKE '%{$_POST['money']}%' " : "");
 
-        //echo $stringy2;
+        $sqlQuery .= " GROUP BY ID ";
+
+        //echo $sqlQuery;
 
         return $wpdb->get_results(
-            $stringy2
+            $sqlQuery
             ,
             ARRAY_A
         );
@@ -297,9 +301,7 @@ class TOPAdm_List_Table extends WP_List_Table
                     return $item[$column_name];
                 case 'user_registered':
                     return $item[$column_name];
-                case 'pastcourses':
-                    return $item[$column_name];
-                case 'curcourses':
+                case 'payment':
                     return $item[$column_name];
                 case 'access2':
                     return $item[$column_name];
@@ -324,7 +326,7 @@ class TOPAdm_List_Table extends WP_List_Table
 function doChanges($action, $element){
     global $wpdb;
 
-    $table = $wpdb->prefix . 'users';
+    $table = $wpdb->prefix . 'usersFake';
 
     $sqlCode = "UPDATE {$table} 
         SET display_name = 
@@ -353,7 +355,7 @@ function topadm_list_init()
 
         global $wpdb; 
 
-        $tablee = $wpdb->prefix . 'users';
+        $tablee = $wpdb->prefix . 'usersFake';
         $tablee2 = $wpdb->prefix . 'usermeta';
         $tablee3 = $wpdb->prefix . 'posts';
 
@@ -430,6 +432,10 @@ function topadm_list_init()
             ARRAY_A
         );
 
+
+
+
+
         // for($i = 0; $i < count($ret); $i++){
         //     print_r($ret[$i]['post_title']);
         // }
@@ -467,9 +473,9 @@ function topadm_list_init()
                 <div class="col-auto mx-1">
                     <select name="money" id="money">
                         <option value="">Payment Type</option>
-                        <option value="pf">Paid Full</option>
-                        <option value="pc">Paid Coupon</option>
-                        <option value="np">Not Paid</option>
+                        <option value="pf">Paid Full</option>';
+                        //<option value="pc">Paid Coupon</option>
+                        echo '<option value="np">Not Paid</option>
                     </select>
                 </div>
                 <div class="col-auto mx-1">
@@ -495,8 +501,8 @@ function topadm_list_init()
                 echo'
                 <label class="checkbox" for="flexCheckChecked'. $i .'">
                     <div class="form-group align-items-center list-group-item form-check my-1">
-                        <input type="checkbox" name="filtersss[]" value="' . $filter_list[$i] . '" id="flexCheckChecked'. $i .'" checked>
-                        <span>' . $filter_list[$i] . '</span>
+                        <input type="checkbox" name="filtersss[]" value="' . $filter_list[$i] . '" id="flexCheckChecked'. $i .'" checked>'; 
+                        echo '<span>' . htmlspecialchars($filter_list[$i]) . '</span>
                     </div>
                 </label>
                 ';
@@ -513,6 +519,22 @@ function topadm_list_init()
     // Prepare table
     echo '<form method="POST">';
 
+
+    if(isset($_POST['element'])){
+        $stu = $_POST['element'];
+        $n = count($stu);
+        for ($i=0; $i<$n; $i++){
+            echo '<input hidden type="checkbox" name="finalSelections[]" value="' . $stu[$i] . '" checked>';
+        }
+    }
+
+    if(isset($_POST['finalSelections'])){
+        $stu = $_POST['finalSelections'];
+        $n = count($stu);
+        for ($i=0; $i<$n; $i++){
+            echo '<input hidden type="checkbox" name="finalSelections[]" value="' . $stu[$i] . '" checked>';
+        }
+    }
     
     
     // Display table
@@ -600,48 +622,48 @@ function topadm_list_init()
     
     ';
 
-    echo '
-        <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#discountModal">Apply Discount</button>
+    // echo '
+    //     <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#discountModal">Apply Discount</button>
 
-        <div class="modal fade" id="discountModal" tabindex="-1" aria-labelledby="discountModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="discountModalLabel">New Discount For '; 
-                    if(isset($_POST['element'])){
-                        $elementss = $_POST['element'];
-                        $N = count($elementss);
+    //     <div class="modal fade" id="discountModal" tabindex="-1" aria-labelledby="discountModalLabel" aria-hidden="true">
+    //         <div class="modal-dialog modal-dialog-centered">
+    //             <div class="modal-content">
+    //             <div class="modal-header">
+    //                 <h1 class="modal-title fs-5" id="discountModalLabel">New Discount For '; 
+    //                 if(isset($_POST['element'])){
+    //                     $elementss = $_POST['element'];
+    //                     $N = count($elementss);
 
-                        echo("$N student(s): ");
-                        for($i=0; $i < $N-1; $i++){
-                            echo($table->table_data[$elementss[$i]-1]['display_name']  . ", ");
-                        }
-                        echo($table->table_data[$elementss[$N - 1]-1]['display_name']);
-                    }
-                    else{
-                        echo("nobody. You didn't select any students.");
-                    }
-                echo '</h1>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form>
-                        <div class="mb-3">
-                            <label for="subject" class="col-form-label">Discount of:</label>
-                            <input type="number" class="mx-1" id="subject" min="1" max="100">
-                            <label for="subject" class="col-form-label">Percent</label>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary">Apply discount</button>
-                </div>
-                </div>
-            </div>
-        </div>
+    //                     echo("$N student(s): ");
+    //                     for($i=0; $i < $N-1; $i++){
+    //                         echo($table->table_data[$elementss[$i]-1]['display_name']  . ", ");
+    //                     }
+    //                     echo($table->table_data[$elementss[$N - 1]-1]['display_name']);
+    //                 }
+    //                 else{
+    //                     echo("nobody. You didn't select any students.");
+    //                 }
+    //             echo '</h1>
+    //                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    //             </div>
+    //             <div class="modal-body">
+    //                 <form>
+    //                     <div class="mb-3">
+    //                         <label for="subject" class="col-form-label">Discount of:</label>
+    //                         <input type="number" class="mx-1" id="subject" min="1" max="100">
+    //                         <label for="subject" class="col-form-label">Percent</label>
+    //                     </div>
+    //                 </form>
+    //             </div>
+    //             <div class="modal-footer">
+    //                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+    //                 <button type="button" class="btn btn-primary">Apply discount</button>
+    //             </div>
+    //             </div>
+    //         </div>
+    //     </div>
     
-    ';
+    // ';
 
     // echo '
     //     <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#addclassModal">Enroll to Class</button>
@@ -837,6 +859,14 @@ function topadm_list_init()
         var column = document.getElementsByClassName("column-ID");
         for(var i = 0; i < column.length; i++){
             column[i].style.width="5em";
+        }
+        var emails = document.getElementsByClassName("column-user_email");
+        for(var i = 0; i < emails.length; i++){
+            emails[i].style.width="15em";
+        }
+        var names = document.getElementsByClassName("column-display_name");
+        for(var i = 0; i < names.length; i++){
+            names[i].style.width="10em";
         }
     </script>';
 
