@@ -345,7 +345,7 @@ function doChanges($action, $element){
 // Adding menu
 function my_add_menu_items()
 {
-    add_menu_page('TOPAdm List Table', 'TOPAdm List Table', 'activate_plugins', 'topadm_list_table', 'topadm_list_init');
+    add_menu_page('SmartFilter', 'SmartFilter', 'activate_plugins', 'topadm_list_table', 'topadm_list_init');
 }
 add_action('admin_menu', 'my_add_menu_items');
 
@@ -366,24 +366,37 @@ function topadm_list_init()
                 $studientes = $_POST['selectedStudentsA'];
                 $course = $_POST['coursesA'];
                 for($i = 0; $i < count($studientes); $i++){
-                    $maxthingy = $wpdb->get_results(
-                        "SELECT MAX(umeta_id) AS b FROM {$tablee2}"
-                        ,
-                        ARRAY_A
-                    );
-                    $maxthingy = $maxthingy[0]['b'];
-                    $maxthingy++;
+
+                    $test = "SELECT 
+                    CASE WHEN EXISTS(
+                    SELECT * FROM {$tablee2} 
+                    WHERE user_id =" . $studientes[$i] . " AND meta_key = 'course_" . $course . "_access_from'
+                    ) then 1 else 0 end as found";
+
+                    $found = $wpdb->get_results($test, ARRAY_A);
+
+                    if(! $found[0]['found']){
+                        $maxthingy = $wpdb->get_results(
+                            "SELECT MAX(umeta_id) AS b FROM {$tablee2}"
+                            ,
+                            ARRAY_A
+                        );
+                        $maxthingy = $maxthingy[0]['b'];
+                        $maxthingy++;
+
+                        $stringyyy = "INSERT INTO wp_usermeta 
+                        (umeta_id, user_id, meta_key, meta_value) 
+                        VALUES (" . $maxthingy . ", " . $studientes[$i] . ", 'course_" . $course . "_access_from', 
+                        UNIX_TIMESTAMP())";
+        
+                        $wpdb->query(
+                            $stringyyy
+                            ,
+                            ARRAY_A
+                        );
+                    }
     
-                    $stringyyy = "INSERT INTO wp_usermeta 
-                    (umeta_id, user_id, meta_key, meta_value) 
-                    VALUES (" . $maxthingy . ", " . $studientes[$i] . ", 'course_" . $course . "_access_from', 
-                    UNIX_TIMESTAMP())";
-    
-                    $wpdb->query(
-                        $stringyyy
-                        ,
-                        ARRAY_A
-                    );
+                    
                 }
             }
         }
@@ -443,7 +456,7 @@ function topadm_list_init()
 
         echo '<iframe name="votar" style="display:none;"></iframe>';
 
-        echo '<div class="wrap"><h1>T.O.P. Smart Nutrition Administration Page</h2>';
+        echo '<div class="wrap"><h1 class="display-1" style="font-size:80px;"><i>SmartFilter</i></h1>';
         echo '<form method="POST">';
         echo '
             <div class="row g-2" role="search">
